@@ -1,5 +1,5 @@
 # Verð á rafmagni og heitu vatni fyrir Home Assistant
-Þessi kóði er ætlaður fyrir Home Assistant og notar gögn frá snjallmæli með upplýsingum um heildarnotkun á rafmagni og vatni.
+Þessi yaml template kóði er ætlaður fyrir Home Assistant og notar gögn frá snjallmæli með upplýsingum um heildarnotkun á rafmagni og vatni.
 Kóðinn reiknar svo út heildarverð á rafmagni og heitu vatni bæði daglega og mánaðarlega út frá föstum verðum sem eru innslegin frá notanda.
 
 # Uppsetning
