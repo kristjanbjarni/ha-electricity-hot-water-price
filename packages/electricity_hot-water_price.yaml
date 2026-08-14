@@ -1,0 +1,355 @@
+# Verð á rafmagni og heitu vatni (2026-08-14)
+# https://github.com/kristjanbjarni/ha-electricity-hot-water-price
+#
+# Hvernig á að nota:
+# Afritaðu "electricity_hot-water_price.yaml" skránna í "config/packages" möppuna í Home Assistant
+# Bættu við eftirfarandi í "config/configuration.yaml" skránna:
+#
+# homeassistant: 
+#   packages: !include_dir_named packages
+#
+#  Endurræstu Home Assistant.
+#
+#  Bættu við eftirfarandi einingum á entities card:
+#    select.electricity_meter
+#    select.hot_water_meter
+#    input_number.electricity_price
+#    input_number.electricity_price_day
+#    input_number.hot_water_price
+#    input_number.hot_water_price_day
+#    input_number.billing_fee
+#
+# Veldu hvaða einingar eru fyrir rafmagn og heitt vatn og settu inn rétt verð (án VSK) í verðsvæðin.
+
+# --------------- Innslegin verð (Öll verð án VSK og orkuskatts) --------------
+input_number:
+  # Rafmagnsverð á kWh án VSK
+  electricity_price:    
+    name: "Rafmagnsverð (kWh)"
+    # Sem dæmi ef rafmagn er hjá Orkubú Vestfjarða og Veitum sem flutningsaðila er verðið reiknað saman út frá eftirfarandi liðum á reikningi:
+    # Orkubú_Vestfjarða_Verð_kWh + Veitur_Dreifing + Veitur_Flutningsgjald + Veitur_Jöfnunargjald = Heildargjald
+    # 8.06 + 5.97 + 2.5 + 0.52 = 17.05 kr
+    icon: "mdi:home-lightning-bolt"
+    min: 1
+    max: 999
+    step: 0.01
+    unit_of_measurement: kr
+    mode: box
+
+  # Rafmagnsverð per dag án VSK
+  electricity_price_day:   
+    name: "Rafmagnsverð (Dag)"
+    # Veitur_Fast_gjald_dagur = 46.52 kr
+    icon: "mdi:home-lightning-bolt"
+    min: 0
+    max: 999
+    step: 0.01
+    unit_of_measurement: kr
+    mode: box
+
+  # Verð heitt vatn (m³) án orkuskatts og VSK
+  hot_water_price:    
+    name: "Verð heitt vatn (m³)"
+    # Veitur_Verð_á_m³ = 200.99
+    icon: "mdi:water"
+    min: 1
+    max: 999
+    step: 0.01
+    unit_of_measurement: kr
+    mode: box
+
+  # Verð heitt vatn per dag án orkuskatts og VSK
+  hot_water_price_day:    
+    name: "Verð heitt vatn (Dag)"
+    # Veitur_Fast_gjald_dagur = 90 kr
+    icon: "mdi:water"
+    min: 0
+    max: 999
+    step: 0.01
+    unit_of_measurement: kr
+    mode: box
+
+  # Þjónustugjald: Tilkynningar og greiðslugjald (án VSK)
+  # Sameiginlegt fyrir rafmagn og heitt vatn hjá Veitum
+  billing_fee:    
+    name: "Þjónustugjald"
+    # Tilkynningar og greiðslugjald = 62 kr
+    icon: "mdi:cash"
+    min: 0
+    max: 999
+    step: 0.01
+    unit_of_measurement: kr
+    mode: box
+
+# --------------- Geymslu breyta fyrir hvaða sensor á að nota sem source fyrir rafmagn og heitt vatn --------------
+input_text:
+  electricity_meter:
+    name: Rafmagnsmælir
+    icon: "mdi:home-lightning-bolt"
+  hot_water_meter:    
+    name: Heitavatnsmælir
+    icon: "mdi:water"
+
+# --------- Select svæði fyrir source á rafmagn og heitt vatn með dýnamískum lista -----
+template:
+  - select:
+      - name: "Rafmagnsmælir"
+        default_entity_id: select.electricity_meter
+        icon: "mdi:home-lightning-bolt"
+        state: "{{ states('input_text.electricity_meter') }}"
+        options: >
+          {% set list = states.sensor 
+            | selectattr('attributes.unit_of_measurement', 'eq', 'kWh') 
+            | map(attribute='entity_id') 
+            | list %}
+          {{ list }}
+        select_option:
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.electricity_meter
+            data:
+              value: "{{ option }}"
+  - select:
+      - name: "Heitavatnsmælir"
+        default_entity_id: select.hot_water_meter
+        icon: "mdi:water"
+        state: "{{ states('input_text.hot_water_meter') }}"
+        options: >
+          {% set list = states.sensor 
+            | selectattr('attributes.unit_of_measurement', 'eq', 'm³') 
+            | map(attribute='entity_id') 
+            | list %}
+          {{ list }}
+        select_option:
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.hot_water_meter
+            data:
+              value: "{{ option }}"
+
+# ---------------------------------- Rafmagn ----------------------------------
+  # Rafmagnsmælir með filter > 100 ef rangt gildi er sent frá mæli t.d 0
+  - sensor:      
+      - default_entity_id: sensor.electricity_meter
+        name: Rafmagnsmælir
+        icon: "mdi:home-lightning-bolt"
+        device_class: energy
+        state_class: total_increasing
+        availability: >
+          {% set meter = states('input_text.electricity_meter') %}
+          {{ states(meter)|float(0) > 100 }}
+        state: >
+          {% set meter = states('input_text.electricity_meter') %}
+          {{ states(meter)|float(0) }}		
+
+  # Heildar rafmagns verð miðað við núverandi dag (Endurstillt daglega með utility_meter sensor.electricity_daily)
+  - sensor:
+    - default_entity_id: sensor.electricity_price_daily
+      name: Heildarverð rafmagn í dag
+      unit_of_measurement: "kr"
+      availability: "{{ has_value('sensor.electricity_daily') }}"
+      icon: "mdi:home-lightning-bolt"
+      state_class: total_increasing
+      # Verð er reiknað út frá kWh og dagjaldi er skipt niður á daginn
+      # Útreikningur er eftirfarandi:
+      # (Verð_kWh * kWh + Fast_gjald_dagur * Dagar) * Virðisaukaskattur_24%
+      state: >
+        {% set price = states('input_number.electricity_price')|float(0) %}
+        {% set price_day = states('input_number.electricity_price_day')|float(0) %}
+        {% set energy = states('sensor.electricity_daily')|float(0) %}
+        {% set last_reset = as_timestamp(state_attr('sensor.electricity_daily','last_reset')) %}
+        {% set ts = now().timestamp() %}
+        {% set days = (ts - last_reset) / (60 * 60 * 24) %}
+        {% set total_price = (price * energy + price_day * days) * 1.24 %}
+        {{ total_price }}
+
+  # Heildar rafmagns verð miðað við núverandi dag (Heil krónutala)
+  - sensor:
+    - default_entity_id: sensor.electricity_price_daily_truncated
+      name: Rafmagn
+      unit_of_measurement: "kr"
+      availability: "{{ has_value('sensor.electricity_price_daily') }}"
+      icon: "mdi:home-lightning-bolt"
+      state_class: total_increasing
+      state: "{{ states('sensor.electricity_price_daily')|round }}"
+
+# ------------------------------- Heitt vatn ----------------------------------
+  # Heitavatnsmælir með filter > 100 ef rangt gildi er sent frá mæli t.d 0
+  - sensor:
+      - default_entity_id: sensor.hot_water_meter
+        name: Heitavatnsmælir
+        icon: "mdi:water"
+        device_class: water
+        state_class: total_increasing
+        availability: >
+          {% set meter = states('input_text.hot_water_meter') %}
+          {{ states(meter)|float(0) > 100 }}
+        state: >
+          {% set meter = states('input_text.hot_water_meter') %}
+          {{ states(meter)|float(0) }}
+
+  # Heildarverð heitt vatn miðað við núverandi dag (Endurstillt daglega með utility_meter sensor.hot_water_daily)
+  - sensor:
+    - default_entity_id: sensor.hot_water_price_daily
+      name: Heildarverð heitt vatn í dag
+      unit_of_measurement: "kr"
+      availability: "{{ has_value('sensor.hot_water_daily') }}"
+      icon: "mdi:water"
+      state_class: total_increasing
+      # Verð er reiknað út frá m³, dagjaldi er skipt niður á daginn og þjónustugjaldi er dreift yfir fjölda daga í mánuði og skipt niður á daginn
+      # Athugið að þjónustugjaldi er bætt hér við heita vatnið en gæti alveg eins verið á rafmagninu þannig séð.
+      # Útreikningur er eftirfarandi:
+      # (Verð_á_m³ * m³ + Verð_á_dag * Dagar) * Orkuskattur_2% * Virðisaukaskattur_11% + (Þjónustugjald / Fjöldi_daga_í_mánuði) * Dagar * Virðisaukaskattur_24%
+      state: >
+        {% set price = states('input_number.hot_water_price')|float(0) %}
+        {% set price_day = states('input_number.hot_water_price_day')|float(0) %}
+        {% set billing_fee = states('input_number.billing_fee')|float(0) %}
+        {% set volume = states('sensor.hot_water_daily')|float(0) %}
+        {% set last_reset = as_timestamp(state_attr('sensor.hot_water_daily','last_reset')) %}
+        {% set dt = now() %}
+        {% set days_in_month = (dt.replace(month=dt.month % 12 + 1, day=1) - timedelta(days=1)).day %}
+        {% set ts = dt.timestamp() %}
+        {% set days = (ts - last_reset) / (60 * 60 * 24) %}
+        {% set total_price = (price * volume + price_day * days ) * 1.02 * 1.11 + (billing_fee / days_in_month) * days * 1.24 %}
+        {{ total_price }}
+
+  # Heildar verð heitt vatn (Heil krónutala)
+  - sensor:
+    - default_entity_id: sensor.hot_water_price_daily_truncated
+      name: Heitt vatn
+      unit_of_measurement: "kr"
+      availability: "{{ has_value('sensor.hot_water_price_daily') }}"
+      icon: "mdi:water"
+      state_class: total_increasing      
+      state: "{{ states('sensor.hot_water_price_daily')|round }}"
+
+# ------------------------------- Heildarverð ----------------------------------
+  # Heildarverð í dag
+  - sensor:
+    - default_entity_id: sensor.energy_price_daily
+      name: Heildarverð í dag
+      unit_of_measurement: "kr"
+      availability: "{{ has_value('sensor.hot_water_price_daily') and has_value('sensor.electricity_price_daily') }}"
+      icon: "mdi:cash"
+      state_class: total_increasing
+      state: >
+        {% set price_hot_water = states('sensor.hot_water_price_daily')|float(0) %}
+        {% set price_electricity = states('sensor.electricity_price_daily')|float(0) %}
+        {% set total_price = price_hot_water + price_electricity %}
+        {{ total_price }}
+
+  # Heildar verð í dag (Heil krónutala)
+  - sensor:
+    - default_entity_id: sensor.energy_price_daily_truncated
+      name: Heildarverð
+      unit_of_measurement: "kr"
+      availability: "{{ has_value('sensor.energy_price_daily') }}"
+      icon: "mdi:cash"
+      state_class: total_increasing
+      state: "{{ states('sensor.energy_price_daily')|round }}"
+
+# ------------------------------ utility_meter ---------------------------------
+utility_meter:
+  # Daily utility meter fyrir rafmagn
+  electricity_daily:
+    source: sensor.electricity_meter
+    name: electricity_daily
+    cycle: daily
+    periodically_resetting: false
+    always_available: true
+
+  # Daily utility meter fyrir heitt vatn
+  hot_water_daily:
+    source: sensor.hot_water_meter
+    name: hot_water_daily
+    cycle: daily
+    periodically_resetting: false
+    always_available: true
+
+# ------------------------- utility_meter fyrir verð ---------------------------
+  # Daily utility meter fyrir verð á rafmagni
+  electricity_price_daily_cycle:
+    source: sensor.electricity_price_daily
+    name: electricity_price_daily_cycle
+    cycle: daily
+    periodically_resetting: true
+    always_available: true
+
+  # Daily utility meter fyrir verð á heitu vatni
+  hot_water_price_daily_cycle:
+    source: sensor.hot_water_price_daily
+    name: hot_water_price_daily_cycle
+    cycle: daily
+    periodically_resetting: true
+    always_available: true
+
+  # Daily utility meter fyrir heildarverð á orku
+  energy_price_daily_cycle:
+    source: sensor.energy_price_daily
+    name: energy_price_daily_cycle
+    cycle: daily
+    periodically_resetting: true
+    always_available: true
+    
+  # Monthly utility meter fyrir verð á rafmagni
+  electricity_price_monthly_cycle:
+    source: sensor.electricity_price_daily
+    name: electricity_price_monthly_cycle
+    cycle: monthly
+    periodically_resetting: true
+    always_available: true
+ 
+  # Monthly utility meter fyrir verð á heitu vatni
+  hot_water_price_monthly_cycle:
+    source: sensor.hot_water_price_daily
+    name: hot_water_price_monthly_cycle
+    cycle: monthly
+    periodically_resetting: true
+    always_available: true    
+
+  # Monthly utility meter fyrir heildarverð á orku
+  energy_price_monthly_cycle:
+    source: sensor.energy_price_daily
+    name: energy_price_monthly_cycle   
+    cycle: monthly
+    periodically_resetting: true
+    always_available: true
+
+# ----------------- Setja friendly_name á alla utility_meter -------------------
+homeassistant:
+  customize:
+    sensor.electricity_daily:
+      friendly_name: Rafmagn
+
+    sensor.hot_water_daily:
+      friendly_name: Heitt vatn
+
+    sensor.energy_price_daily:
+      friendly_name: Heildarverð í dag
+      
+    sensor.electricity_price_daily_cycle:
+      friendly_name: Rafmagn
+      
+    sensor.electricity_price_monthly_cycle:
+      friendly_name: Rafmagn
+      
+    sensor.hot_water_price_daily_cycle:
+      friendly_name: Heitt vatn
+
+    sensor.hot_water_price_monthly_cycle:
+      friendly_name: Heitt vatn
+
+    sensor.energy_price_daily_cycle:
+      friendly_name: Heildarverð
+
+    sensor.energy_price_monthly_cycle:
+      friendly_name: Heildarverð
+
+    sensor.hot_water_price_daily_truncated:
+      friendly_name: Heitt vatn
+
+    sensor.electricity_price_daily_truncated:
+      friendly_name: Rafmagn
+
+    sensor.energy_price_daily_truncated:
+      friendly_name: Heildarverð
