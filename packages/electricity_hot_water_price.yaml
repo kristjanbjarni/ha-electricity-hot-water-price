@@ -2,7 +2,7 @@
 # https://github.com/kristjanbjarni/ha-electricity-hot-water-price
 #
 # Hvernig á að nota:
-# Afritaðu "electricity_hot-water_price.yaml" skránna í "config/packages" möppuna í Home Assistant
+# Afritaðu "electricity_hot_water_price.yaml" skránna í "config/packages" möppuna í Home Assistant
 # Bættu við eftirfarandi í "config/configuration.yaml" skránna:
 #
 # homeassistant: 
