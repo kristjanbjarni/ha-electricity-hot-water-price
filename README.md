@@ -1,6 +1,7 @@
 # Verð á rafmagni og heitu vatni fyrir Home Assistant
-Þessi yaml template kóði er ætlaður fyrir Home Assistant og notar gögn frá snjallmæli með upplýsingum um heildarnotkun á rafmagni og vatni.
-Kóðinn reiknar svo út heildarverð á rafmagni og heitu vatni bæði daglega og mánaðarlega út frá föstum verðum sem eru innslegin frá notanda.
+Þessi yaml template kóði er ætlaður fyrir [Home Assistant](https://www.home-assistant.io/) og notar gögn frá [snjallmæli](https://www.veitur.is/l/snjallmaelar) með upplýsingum um heildarnotkun á rafmagni og vatni. Kóðinn reiknar svo út heildarverð á rafmagni og heitu vatni bæði daglega og mánaðarlega út frá föstum verðum sem eru innslegin frá notanda.
+
+Þú þarft þegar að vera með tengingu við P1 tengið á snjallmælinum sem skilar heildar rafmagnsnotkun (kWh) og heitavatnsnotkun (m³) yfir í Home Assistant.
 
 # Uppsetning
 Þú þarft að vera með [Samba share app]([https://www.home-assistant.io/common-tasks/os/](https://www.home-assistant.io/common-tasks/os/#installing-and-using-the-samba-app)) uppsett í Home Assistant til að nálgast möppur beint.
@@ -28,6 +29,8 @@ entities:
   - entity: select.hot_water_meter
 title: Mælar
 ```
+<img width="519" height="224" alt="image" src="https://github.com/user-attachments/assets/94b8f8c4-7ffa-497f-8dfd-d93e4ed5018d" />
+
 
 Veldu þær einingar sem gefa heildarnotkun á rafmagni og heitu vatni.
 
@@ -47,6 +50,8 @@ entities:
   - entity: input_number.billing_fee
 title: Föst verð (án VSK)
 ```
+<img width="517" height="460" alt="image" src="https://github.com/user-attachments/assets/98f5b6f1-a2e8-4440-8744-e7d518bf36d6" />
+
 Breyttu svo verðum í réttar upphæðir eins og þær eru skilgreindar á reikningi. Sem dæmi ef þú ert með rafmagn frá Orkubú Vestfjarða og notar Veitur sem flutningsaðila eru eftirfarandi réttar upphæðir:
   - Rafmagnsverð (kWh) = 17.05 kr (Verð frá OV + Verð frá Veitum)
   - Rafmagnsverð (Dag) = 46.52 kr (Veitur)
@@ -69,6 +74,7 @@ chart_type: bar
 stat_types:
   - state
 ```
+<img width="518" height="368" alt="image" src="https://github.com/user-attachments/assets/b67658cf-2c6b-4281-8a29-297f7fffdfcb" />
 
 Til að fá mánaðarnotkun geturðu notað eftirfarandi statistics-graph:
 ```yaml
@@ -84,3 +90,4 @@ chart_type: bar
 stat_types:
   - state
 ```
+<img width="518" height="368" alt="image" src="https://github.com/user-attachments/assets/dcd981c5-e8e1-40b1-adee-5eaeb2f09ffd" />
