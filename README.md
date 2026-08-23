@@ -4,7 +4,7 @@
 Þú þarft þegar að vera með tengingu við P1 tengið á snjallmælinum sem skilar heildar rafmagnsnotkun (kWh) og heitavatnsnotkun (m³) yfir í Home Assistant.
 
 # Uppsetning
-Þú þarft að vera með [Samba share app]([https://www.home-assistant.io/common-tasks/os/](https://www.home-assistant.io/common-tasks/os/#installing-and-using-the-samba-app)) uppsett í Home Assistant til að nálgast möppur beint.
+Þú þarft að vera með [Samba share app](https://www.home-assistant.io/common-tasks/os/#installing-and-using-the-samba-app) uppsett í Home Assistant til að nálgast möppur beint.
 
 Afritaðu [electricity_hot_water_price.yaml](https://github.com/kristjanbjarni/ha-electricity-hot-water-price/releases/download/v1.0/electricity_hot_water_price.yaml) yfir í `config/packages` möppu í Home Assistant.
 Hugsanlega þarftu að búa til `packages` möppuna ef hún er ekki þegar til.
