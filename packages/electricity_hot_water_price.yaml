@@ -1,4 +1,4 @@
-# Verð á rafmagni og heitu vatni (2026-08-14)
+# Verð á rafmagni og heitu vatni (2026-10-22)
 # https://github.com/kristjanbjarni/ha-electricity-hot-water-price
 #
 # Hvernig á að nota:
@@ -128,16 +128,17 @@ template:
               value: "{{ option }}"
 
 # ---------------------------------- Rafmagn ----------------------------------
-  # Rafmagnsmælir með filter > 100 ef rangt gildi er sent frá mæli t.d 0
+  # Rafmagnsmælir með filter > 1 ef rangt gildi er sent frá mæli t.d 0
   - sensor:      
       - default_entity_id: sensor.electricity_meter
         name: Rafmagnsmælir
         icon: "mdi:home-lightning-bolt"
         device_class: energy
         state_class: total_increasing
+        unit_of_measurement: "kWh"
         availability: >
           {% set meter = states('input_text.electricity_meter') %}
-          {{ states(meter)|float(0) > 100 }}
+          {{ states(meter)|float(0) > 1 }}
         state: >
           {% set meter = states('input_text.electricity_meter') %}
           {{ states(meter)|float(0) }}		
@@ -174,16 +175,17 @@ template:
       state: "{{ states('sensor.electricity_price_daily')|round }}"
 
 # ------------------------------- Heitt vatn ----------------------------------
-  # Heitavatnsmælir með filter > 100 ef rangt gildi er sent frá mæli t.d 0
+  # Heitavatnsmælir með filter > 1 ef rangt gildi er sent frá mæli t.d 0
   - sensor:
       - default_entity_id: sensor.hot_water_meter
         name: Heitavatnsmælir
         icon: "mdi:water"
         device_class: water
         state_class: total_increasing
+        unit_of_measurement: "m³"
         availability: >
           {% set meter = states('input_text.hot_water_meter') %}
-          {{ states(meter)|float(0) > 100 }}
+          {{ states(meter)|float(0) > 1 }}
         state: >
           {% set meter = states('input_text.hot_water_meter') %}
           {{ states(meter)|float(0) }}
